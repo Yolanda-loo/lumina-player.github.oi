@@ -3,14 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lumina Player v5.0 (Local Support)</title>
+    <title>Lumina Player v6.0</title>
     <style>
         :root {
-            --primary-color: #6366f1;
-            --bg-color: #0f172a;
-            --panel-bg: #1e293b;
+            --primary-color: #6366f1; /* Indigo */
+            --primary-hover: #4f46e5;
+            --bg-color: #0f172a;      /* Slate 900 */
+            --panel-bg: #1e293b;      /* Slate 800 */
             --text-main: #f8fafc;
             --text-muted: #94a3b8;
+            --danger-color: #ef4444;  /* Red */
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; outline: none; }
@@ -20,44 +22,74 @@
             background: #020617; 
             color: var(--text-main);
             min-height: 100vh;
-            display: flex; justify-content: center; align-items: center;
-            padding: 20px;
+            display: flex; flex-direction: column; align-items: center;
         }
 
+        /* --- 1. New Professional Header --- */
+        .app-header {
+            width: 100%;
+            padding: 20px 40px;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            display: flex; justify-content: space-between; align-items: center;
+            position: sticky; top: 0; z-index: 10;
+            margin-bottom: 20px;
+        }
+        .logo { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.5px; display: flex; align-items: center; gap: 10px; }
+        .logo span { color: var(--primary-color); }
+        .logo svg { width: 28px; height: 28px; fill: var(--primary-color); }
+
+        /* --- Main Layout --- */
         .app-container {
             display: grid; grid-template-columns: 1fr 350px; gap: 20px;
-            width: 100%; max-width: 1200px;
+            width: 95%; max-width: 1200px;
             background: var(--bg-color); border-radius: 16px; overflow: hidden;
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+            border: 1px solid rgba(255,255,255,0.05);
         }
 
         @media (max-width: 900px) {
             .app-container { grid-template-columns: 1fr; }
-            .playlist { max-height: 350px; }
+            .playlist { max-height: 400px; }
+            .app-header { padding: 15px 20px; }
         }
 
-        /* Player */
+        /* --- Player Section --- */
         .lumina-player { position: relative; width: 100%; aspect-ratio: 16/9; background: #000; group: focus; }
         .lumina-player.fullscreen { width: 100vw; height: 100vh; max-width: none; }
         video { width: 100%; height: 100%; display: block; background: #000; }
         
-        /* Overlays */
-        .overlay-icon {
+        /* Center Overlay (Play Icon / Welcome) */
+        .overlay-center {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            pointer-events: none; opacity: 0; transition: opacity 0.2s, transform 0.2s;
-            background: rgba(0,0,0,0.4); backdrop-filter: blur(4px);
-            border-radius: 50%; padding: 20px; display: flex;
+            pointer-events: none; opacity: 1; transition: opacity 0.3s, transform 0.3s;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            text-align: center;
         }
+        .play-circle-bg {
+            background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);
+            border-radius: 50%; padding: 25px; margin-bottom: 15px;
+            transition: transform 0.2s;
+        }
+        .welcome-text { font-size: 1.2rem; font-weight: 600; text-shadow: 0 2px 4px rgba(0,0,0,0.8); opacity: 0; transform: translateY(10px); transition: all 0.5s; }
+        
+        /* Show welcome text only when paused/idle */
+        .lumina-player.paused .welcome-text { opacity: 1; transform: translateY(0); }
+        .lumina-player:not(.paused) .overlay-center { opacity: 0; transform: translate(-50%, -50%) scale(1.5); }
+
         .spinner {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             border: 4px solid rgba(255,255,255,0.1); border-top-color: var(--primary-color);
-            width: 50px; height: 50px; animation: spin 1s linear infinite; display: none; padding: 0;
+            width: 50px; height: 50px; border-radius: 50%; 
+            animation: spin 1s linear infinite; display: none; pointer-events: none;
         }
         @keyframes spin { 100% { transform: translate(-50%, -50%) rotate(360deg); } }
 
         /* Controls */
         .controls {
             position: absolute; bottom: 0; left: 0; right: 0;
-            background: linear-gradient(to top, rgba(15, 23, 42, 0.95), transparent);
+            background: linear-gradient(to top, rgba(2, 6, 23, 0.95), transparent);
             padding: 20px 20px 15px 20px;
             display: flex; flex-wrap: wrap; align-items: center;
             transition: opacity 0.3s ease;
@@ -88,10 +120,9 @@
 
         .time { font-size: 13px; font-family: monospace; color: #e2e8f0; margin-left: 10px; }
 
-        /* Playlist */
+        /* --- Playlist --- */
         .playlist { background: var(--panel-bg); display: flex; flex-direction: column; overflow-y: auto; border-left: 1px solid rgba(255,255,255,0.05); }
         
-        /* Updated Header with Upload Button */
         .playlist-header {
             padding: 15px 20px; font-weight: 600; border-bottom: 1px solid rgba(255,255,255,0.05);
             background: var(--panel-bg); position: sticky; top: 0; z-index: 2;
@@ -99,31 +130,65 @@
         }
         
         .upload-btn {
-            background: rgba(255,255,255,0.1); padding: 6px 12px; border-radius: 4px;
+            background: rgba(255,255,255,0.1); padding: 8px 12px; border-radius: 6px;
             font-size: 0.8rem; display: flex; gap: 6px; align-items: center; color: white;
-            transition: background 0.2s;
+            transition: all 0.2s; border: 1px solid rgba(255,255,255,0.1);
         }
-        .upload-btn:hover { background: var(--primary-color); }
+        .upload-btn:hover { background: var(--primary-color); border-color: var(--primary-color); }
         .upload-btn svg { width: 16px; height: 16px; }
 
-        .playlist-item { display: flex; gap: 12px; padding: 12px 20px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.02); transition: background 0.2s; }
+        .playlist-item { 
+            display: flex; gap: 12px; padding: 12px 20px; cursor: pointer; 
+            border-bottom: 1px solid rgba(255,255,255,0.02); transition: background 0.2s; 
+            position: relative;
+        }
         .playlist-item:hover { background: rgba(255,255,255,0.05); }
         .playlist-item.active { background: rgba(99, 102, 241, 0.15); border-left: 3px solid var(--primary-color); }
         
-        /* Generic file icon for local files */
+        .playlist-item:hover .remove-btn { opacity: 1; }
+
         .thumb { width: 80px; height: 45px; background: #000; border-radius: 4px; object-fit: cover; display: flex; align-items: center; justify-content: center; color: #555; }
-        .meta { overflow: hidden; }
+        .meta { overflow: hidden; flex: 1; }
         .meta h4 { font-size: 0.9rem; font-weight: 500; margin-bottom: 4px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .meta p { font-size: 0.75rem; color: var(--text-muted); }
+
+        /* --- 2. Remove Button --- */
+        .remove-btn {
+            background: rgba(239, 68, 68, 0.2); 
+            color: var(--danger-color);
+            border-radius: 4px; padding: 6px;
+            opacity: 0; transition: all 0.2s;
+            align-self: center;
+        }
+        .remove-btn:hover { background: var(--danger-color); color: white; }
+        .remove-btn svg { width: 16px; height: 16px; }
+        /* Always show remove button on touch devices or active item */
+        .playlist-item.active .remove-btn { opacity: 1; }
+
     </style>
 </head>
 <body>
 
+<header class="app-header">
+    <div class="logo">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+        Lumina<span>Player</span>
+    </div>
+    <div style="font-size: 0.9rem; color: #94a3b8;">v6.0</div>
+</header>
+
 <div class="app-container">
     <div class="lumina-player" id="videoContainer" tabindex="0">
         <video id="video" playsinline crossorigin="anonymous"></video>
-        <div class="overlay-icon spinner" id="spinner"></div>
-        <div class="overlay-icon" id="centerPlay"><svg viewBox="0 0 24 24" width="48" height="48" fill="white"><path d="M8 5v14l11-7z"/></svg></div>
+        
+        <div class="spinner" id="spinner"></div>
+
+        <div class="overlay-center" id="centerOverlay">
+            <div class="play-circle-bg">
+                <svg viewBox="0 0 24 24" width="48" height="48" fill="white"><path d="M8 5v14l11-7z"/></svg>
+            </div>
+            <div class="welcome-text">Welcome to Lumina</div>
+        </div>
         
         <div class="controls">
             <div class="progress-container">
@@ -151,7 +216,7 @@
         <div class="playlist-header">
             <span>Playlist</span>
             <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
-                <svg viewBox="0 0 24 24"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg> Open File
+                <svg viewBox="0 0 24 24"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg> Add Video
             </button>
             <input type="file" id="fileInput" accept="video/*" style="display: none;" multiple>
         </div>
@@ -159,11 +224,10 @@
 </div>
 
 <script>
-    // --- Configuration ---
     const STORAGE_KEY_INDEX = 'lumina_index';
     const STORAGE_KEY_TIME  = 'lumina_time';
     
-    // Initial Default Data
+    // Default Data
     let playlistData = [
         { title: "Tears of Steel", src: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4", poster: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/TearsOfSteel.jpg", duration: "12:14", type: 'cloud' },
         { title: "Big Buck Bunny", src: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4", poster: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/BigBuckBunny.jpg", duration: "09:56", type: 'cloud' }
@@ -171,13 +235,14 @@
 
     let currentTrackIndex = 0;
     
-    // --- Elements ---
+    // Elements
     const video = document.getElementById('video');
     const container = document.getElementById('videoContainer');
     const playlistEl = document.getElementById('playlist');
     const playBtn = document.getElementById('playBtn');
     const playIcon = container.querySelector('.play-icon');
     const pauseIcon = container.querySelector('.pause-icon');
+    const centerOverlay = document.getElementById('centerOverlay');
     const progressFilled = document.getElementById('progressBar');
     const seekSlider = document.getElementById('seek');
     const timeDisplay = document.getElementById('currentTime');
@@ -185,59 +250,84 @@
     const fileInput = document.getElementById('fileInput');
     const spinner = document.getElementById('spinner');
 
-    // --- Init ---
     function init() {
         const savedIndex = localStorage.getItem(STORAGE_KEY_INDEX);
-        // Only restore if the saved index is within bounds of default cloud data
         if (savedIndex !== null && playlistData[savedIndex] && playlistData[savedIndex].type === 'cloud') {
             currentTrackIndex = parseInt(savedIndex, 10);
         }
-        
         renderPlaylist();
-        loadTrack(currentTrackIndex, true);
+        if(playlistData.length > 0) loadTrack(currentTrackIndex, true);
     }
 
     function loadTrack(index, isRestoring = false) {
+        if (!playlistData[index]) return; // Guard clause
+        
         currentTrackIndex = index;
         const track = playlistData[index];
         
-        // Persistence only for cloud files
-        if(track.type === 'cloud') {
-            localStorage.setItem(STORAGE_KEY_INDEX, index);
-        }
+        if(track.type === 'cloud') localStorage.setItem(STORAGE_KEY_INDEX, index);
 
         video.src = track.src;
         
-        // Handle poster (use generic if local)
-        if(track.poster) {
-            video.poster = track.poster;
-        } else {
-            video.removeAttribute('poster');
-        }
+        if(track.poster) video.poster = track.poster;
+        else video.removeAttribute('poster');
         
         renderPlaylist();
         
-        // Restore Time Logic (Cloud Only)
         if (isRestoring && track.type === 'cloud') {
             const savedTime = localStorage.getItem(STORAGE_KEY_TIME);
             if (savedTime) video.currentTime = parseFloat(savedTime);
+            updatePlayState(); // Stay paused on restore
         } else {
             video.play().catch(console.log);
         }
     }
 
+    function removeTrack(index, event) {
+        event.stopPropagation(); // Prevent the click from playing the video
+        
+        const wasPlaying = (index === currentTrackIndex);
+        
+        // Remove from array
+        playlistData.splice(index, 1);
+        
+        // Logic for which track to play next
+        if (playlistData.length === 0) {
+            video.src = "";
+            video.removeAttribute('poster');
+            renderPlaylist();
+            return;
+        }
+
+        if (index < currentTrackIndex) {
+            currentTrackIndex--; // Shift index down
+        } else if (index === currentTrackIndex) {
+            // We deleted the currently playing video
+            // If we deleted the last one, go to 0, else stay at current (which is now the next one)
+            if (currentTrackIndex >= playlistData.length) {
+                currentTrackIndex = 0;
+            }
+            loadTrack(currentTrackIndex);
+        }
+        
+        renderPlaylist();
+    }
+
     function renderPlaylist() {
-        // Keep header, clear list
         const header = playlistEl.firstElementChild;
         playlistEl.innerHTML = '';
         playlistEl.appendChild(header);
+
+        if (playlistData.length === 0) {
+            playlistEl.innerHTML += `<div style="padding: 20px; text-align: center; color: #64748b;">No videos in playlist</div>`;
+            return;
+        }
 
         playlistData.forEach((track, index) => {
             const item = document.createElement('div');
             item.className = `playlist-item ${index === currentTrackIndex ? 'active' : ''}`;
             item.onclick = () => loadTrack(index);
             
-            // Thumbnail logic: Image for cloud, Icon for local
             let thumbContent = track.poster 
                 ? `<img src="${track.poster}" class="thumb">` 
                 : `<div class="thumb"><svg width="24" height="24" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg></div>`;
@@ -248,41 +338,41 @@
                     <h4>${track.title}</h4>
                     <p>${track.duration || 'Local File'}</p>
                 </div>
+                <button class="remove-btn" onclick="removeTrack(${index}, event)" title="Remove Video">
+                    <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                </button>
             `;
             playlistEl.appendChild(item);
         });
     }
 
-    // --- Local File Handling ---
     fileInput.addEventListener('change', (e) => {
         const files = Array.from(e.target.files);
         if(files.length === 0) return;
-
-        // Process files
         files.forEach(file => {
             const blobUrl = URL.createObjectURL(file);
-            playlistData.push({
-                title: file.name,
-                src: blobUrl,
-                poster: null,
-                duration: "Local",
-                type: 'local'
-            });
+            playlistData.push({ title: file.name, src: blobUrl, poster: null, duration: "Local", type: 'local' });
         });
-
-        // Refresh UI and play the first new file
         renderPlaylist();
-        loadTrack(playlistData.length - files.length); // Play first added file
+        loadTrack(playlistData.length - files.length);
     });
 
-    // --- Player Logic ---
-    function togglePlay() { video.paused ? video.play() : video.pause(); }
+    function togglePlay() { 
+        if(playlistData.length === 0) return;
+        video.paused ? video.play() : video.pause(); 
+    }
     
     function updatePlayState() {
+        // Paused State
         if (video.paused) {
-            playIcon.style.display = 'block'; pauseIcon.style.display = 'none'; container.classList.add('paused');
+            playIcon.style.display = 'block'; 
+            pauseIcon.style.display = 'none'; 
+            container.classList.add('paused');
         } else {
-            playIcon.style.display = 'none'; pauseIcon.style.display = 'block'; container.classList.remove('paused');
+            // Playing State
+            playIcon.style.display = 'none'; 
+            pauseIcon.style.display = 'block'; 
+            container.classList.remove('paused');
         }
     }
 
@@ -301,7 +391,6 @@
         if(video.duration) durationDisplay.textContent = format(video.duration);
     });
 
-    // Save progress only for cloud files
     const saveProgress = () => {
         if(playlistData[currentTrackIndex]?.type === 'cloud' && video.currentTime > 0) {
             localStorage.setItem(STORAGE_KEY_TIME, video.currentTime);
